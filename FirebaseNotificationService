@@ -1,0 +1,102 @@
+  [Service]
+    [IntentFilter(new[] { "com.google.firebase.MESSAGING_EVENT" })]
+    public class FirebaseNotificationService : FirebaseMessagingService
+    {
+        public FirebaseNotificationService()
+        {
+        }
+
+        public override void OnMessageReceived(RemoteMessage message)
+        {
+            base.OnMessageReceived(message);
+            ActivityManager.RunningAppProcessInfo appProcessInfo = new ActivityManager.RunningAppProcessInfo();
+            ActivityManager.GetMyMemoryState(appProcessInfo);
+            var isSendNotification = !(appProcessInfo.Importance == Importance.Foreground);
+            if (isSendNotification)
+            {
+                var data = message.Data;
+                var notification = message.GetNotification();
+                var body = notification?.Body;
+                var title = "";
+                var time = message.SentTime;
+                var chatId = data[PushNavigationConstants.ChatId];
+                var text = data[PushNavigationConstants.MessageText];
+
+                ShowNotification(title, text, chatId);
+            }
+        }
+
+        private void ShowNotification(string title, string text, string chatId)
+        {
+            NotificationCompat.Builder builder;
+
+            var intent = new Intent(this, typeof(BottomMenuView));
+            intent.PutExtra(PushNavigationConstants.ChatId, chatId);
+            intent.AddFlags(ActivityFlags.ClearTop);
+            var pendingIntent = PendingIntent.GetActivity(this, 0, intent, PendingIntentFlags.OneShot);
+
+            var notificationManager = (NotificationManager)GetSystemService(Context.NotificationService);
+
+            if ((int)Build.VERSION.SdkInt >= 26)
+            {
+                var channelId = ApplicationContext.PackageName;
+                var channel = new NotificationChannel(channelId, channelId, NotificationImportance.Default);
+                notificationManager.CreateNotificationChannel(channel);
+
+                builder = new NotificationCompat.Builder(ApplicationContext, channel.Id);
+            }
+            else
+            {
+                builder = new NotificationCompat.Builder(ApplicationContext);
+                builder.SetPriority((int)NotificationPriority.Default);
+            }
+
+            builder.SetSmallIcon(Resource.Drawable.ic_push)
+               .SetContentIntent(pendingIntent)
+               .SetContentTitle(title)
+               .SetContentText(text)
+               .SetAutoCancel(true)
+               .SetWhen(Java.Lang.JavaSystem.CurrentTimeMillis())
+               .SetAutoCancel(true);
+              // .AddAction(Resource.Drawable.ic_send, "Answer", pendingIntent) //should be used later 
+              // .AddAction(Resource.Drawable.ic_send, "Mark as read", pendingIntent); //should be used later
+
+            var id = GenerateId();
+            notificationManager.Notify(0, builder.Build());
+        }
+
+      /*  public override void HandleIntent(Intent intent)
+        {
+            try
+            {
+                if (intent.Extras != null)
+                {
+                    var builder = new RemoteMessage.Builder("FirebaseNotificationService");
+
+                    foreach (string key in intent.Extras.KeySet())
+                    {
+                        builder.AddData(key, intent.Extras.Get(key).ToString());
+                    }
+
+                    this.OnMessageReceived(builder.Build());
+                }
+                else
+                {
+                    base.HandleIntent(intent);
+                }
+            }
+            catch (Exception)
+            {
+                base.HandleIntent(intent);
+            }
+
+        }*/
+
+        private static int GenerateId()
+        {
+            var longId = (DateTime.UtcNow.Ticks / 1000) % int.MaxValue;
+            var id = (int)longId;
+
+            return id;
+        }
+    }
