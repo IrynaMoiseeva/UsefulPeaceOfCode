@@ -1,4 +1,13 @@
-  [Service]
+using System;
+using Android.App;
+using Android.Content;
+using Android.OS;
+using Android.Support.V4.App;
+using Firebase.Messaging;
+
+namespace App.Droid
+{
+ [Service]
     [IntentFilter(new[] { "com.google.firebase.MESSAGING_EVENT" })]
     public class FirebaseNotificationService : FirebaseMessagingService
     {
@@ -100,3 +109,4 @@
             return id;
         }
     }
+}
